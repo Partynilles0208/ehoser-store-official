@@ -135,87 +135,41 @@ const ensureColumnExists = (table, column, definition) => {
 
 ensureColumnExists('apps', 'source_url', 'TEXT');
 
-// Demo-Daten einfügen
-const seedDatabase = () => {
-  db.get("SELECT COUNT(*) as count FROM apps", (err, row) => {
-    if (row.count === 0) {
-      const apps = [
-        {
-          name: 'Photo Editor Pro',
-          description: 'Professionelle Bildbearbeitung mit KI-Features',
-          category: 'Grafik',
-          version: '2.1.0',
-          icon_url: '🎨',
-          download_url: '/downloads/photo-editor.zip',
-          source_url: 'https://example.com/photo-editor'
-        },
-        {
-          name: 'Code Studio',
-          description: 'Vollständiger Code-Editor für Entwickler',
-          category: 'Entwicklung',
-          version: '3.0.1',
-          icon_url: '💻',
-          download_url: '/downloads/code-studio.zip',
-          source_url: 'https://example.com/code-studio'
-        },
-        {
-          name: 'Video Master',
-          description: 'Video-Schnitt und Rendering in 4K',
-          category: 'Video',
-          version: '1.5.0',
-          icon_url: '🎬',
-          download_url: '/downloads/video-master.zip',
-          source_url: 'https://example.com/video-master'
-        },
-        {
-          name: 'Data Analyzer',
-          description: 'Datenanalyse und Visualisierung',
-          category: 'Produktivität',
-          version: '2.3.2',
-          icon_url: '📊',
-          download_url: '/downloads/data-analyzer.zip',
-          source_url: 'https://example.com/data-analyzer'
-        },
-        {
-          name: 'Security Suite',
-          description: 'Kompletter Schutz für dein System',
-          category: 'Sicherheit',
-          version: '1.8.0',
-          icon_url: '🔒',
-          download_url: '/downloads/security-suite.zip',
-          source_url: 'https://example.com/security-suite'
-        },
-        {
-          name: 'Cloud Sync Pro',
-          description: 'Nahtlose Cloud-Synchronisation',
-          category: 'Cloud',
-          version: '2.0.0',
-          icon_url: '☁️',
-          download_url: '/downloads/cloud-sync.zip',
-          source_url: 'https://example.com/cloud-sync'
-        }
-      ];
-
-      apps.forEach(app => {
-        db.run(
-          `INSERT INTO apps (name, description, category, version, icon_url, download_url, source_url) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          [
-            app.name,
-            app.description,
-            app.category,
-            app.version,
-            app.icon_url,
-            app.download_url,
-            app.source_url
-          ]
-        );
-      });
-      console.log('Demo-Apps hinzugefügt');
+const removeSeededDemoApps = () => {
+  db.all('PRAGMA table_info(apps)', (schemaErr, rows) => {
+    if (schemaErr) {
+      console.error('Fehler beim Prüfen des app-Schemas:', schemaErr.message);
+      return;
     }
+
+    const hasSourceUrl = rows.some((row) => row.name === 'source_url');
+    const fallbackNames = [
+      'Photo Editor Pro',
+      'Code Studio',
+      'Video Master',
+      'Data Analyzer',
+      'Security Suite',
+      'Cloud Sync Pro'
+    ];
+
+    const sql = hasSourceUrl
+      ? "DELETE FROM apps WHERE source_url LIKE 'https://example.com/%' OR name IN (?, ?, ?, ?, ?, ?)"
+      : 'DELETE FROM apps WHERE name IN (?, ?, ?, ?, ?, ?)';
+
+    db.run(sql, fallbackNames, function onDelete(err) {
+      if (err) {
+        console.error('Fehler beim Entfernen von Demo-Apps:', err.message);
+        return;
+      }
+
+      if (this.changes > 0) {
+        console.log(`${this.changes} Demo-Apps entfernt.`);
+      }
+    });
   });
 };
 
-seedDatabase();
+removeSeededDemoApps();
 
 // API Routes
 
@@ -399,3 +353,4 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`🚀 ehoser shop läuft auf http://localhost:${PORT}`);
 });
+b
