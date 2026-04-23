@@ -29,8 +29,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// File Upload (temp folder)
-const uploadsRoot = path.join(__dirname, 'uploads');
+// File Upload (temp folder) — /tmp auf Vercel, lokaler Ordner sonst
+const uploadsRoot = process.env.VERCEL ? '/tmp' : path.join(__dirname, 'uploads');
 fs.mkdirSync(uploadsRoot, { recursive: true });
 
 const storage = multer.diskStorage({
@@ -128,7 +128,22 @@ app.post('/api/register', async (req, res) => {
     });
   } catch (error) {
     console.error('Register Error:', error);
-    res.status(500).json({ error: 'Registrierung fehlgeschlagen' });
+
+    const message = (error && error.message ? error.message : '').toLowerCase();
+
+    if (message.includes('violates row-level security policy') || message.includes('permission denied')) {
+      return res.status(500).json({ error: 'Supabase blockiert das Speichern. Pruefe RLS/Policies fuer die users-Tabelle.' });
+    }
+
+    if (message.includes("relation 'users' does not exist") || message.includes('relation "users" does not exist')) {
+      return res.status(500).json({ error: 'Die users-Tabelle fehlt in Supabase.' });
+    }
+
+    if (message.includes('column') && message.includes('does not exist')) {
+      return res.status(500).json({ error: 'Die Spalten der users-Tabelle passen nicht zum Code.' });
+    }
+
+    res.status(500).json({ error: error.message || 'Registrierung fehlgeschlagen' });
   }
 });
 
@@ -368,8 +383,12 @@ app.use((err, req, res, next) => {
   next();
 });
 
-// Server starten
-app.listen(PORT, () => {
-  console.log(`🚀 ehoser shop läuft auf http://localhost:${PORT}`);
-  console.log(`📊 Connected to Supabase: ${SUPABASE_URL}`);
-});
+// Server starten (lokal) oder als Vercel-Handler exportieren
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`🚀 ehoser shop läuft auf http://localhost:${PORT}`);
+    console.log(`📊 Connected to Supabase: ${SUPABASE_URL}`);
+  });
+}
+
+module.exports = app;
