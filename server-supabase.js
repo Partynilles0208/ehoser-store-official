@@ -128,22 +128,8 @@ app.post('/api/register', async (req, res) => {
     });
   } catch (error) {
     console.error('Register Error:', error);
-
-    const message = (error && error.message ? error.message : '').toLowerCase();
-
-    if (message.includes('violates row-level security policy') || message.includes('permission denied')) {
-      return res.status(500).json({ error: 'Supabase blockiert das Speichern. Pruefe RLS/Policies fuer die users-Tabelle.' });
-    }
-
-    if (message.includes("relation 'users' does not exist") || message.includes('relation "users" does not exist')) {
-      return res.status(500).json({ error: 'Die users-Tabelle fehlt in Supabase.' });
-    }
-
-    if (message.includes('column') && message.includes('does not exist')) {
-      return res.status(500).json({ error: 'Die Spalten der users-Tabelle passen nicht zum Code.' });
-    }
-
-    res.status(500).json({ error: error.message || 'Registrierung fehlgeschlagen' });
+    const msg = error?.message || error?.details || error?.hint || JSON.stringify(error) || 'Unbekannter Fehler';
+    res.status(500).json({ error: `Registrierung fehlgeschlagen: ${msg}` });
   }
 });
 
