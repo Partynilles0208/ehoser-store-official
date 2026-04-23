@@ -353,4 +353,3 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`🚀 ehoser shop läuft auf http://localhost:${PORT}`);
 });
-b
